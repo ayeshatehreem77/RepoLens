@@ -11,10 +11,10 @@ import {
   X,
   AlertCircle,
   Tag,
-  ChevronDown
+  RefreshCw
 } from 'lucide-react';
 import AppLayout from '../../layouts/AppLayout';
-import { apiRequest } from '../../services/api';
+import { apiRequest, githubService } from '../../services/api';
 
 export default function IssuesPage() {
   const [issues, setIssues] = useState([]);
@@ -36,9 +36,10 @@ export default function IssuesPage() {
     setLoading(true);
     setError(null);
     try {
+      // FIX: Fetch repos using githubService and fetch all user issues
       const [issuesData, reposData] = await Promise.all([
         apiRequest('/issues').catch(() => []),
-        apiRequest('/projects').catch(() => [])
+        githubService.getRepositories().catch(() => [])
       ]);
 
       setIssues(Array.isArray(issuesData) ? issuesData : []);
@@ -88,8 +89,19 @@ export default function IssuesPage() {
 
         // Repository Filter
         if (selectedRepo !== 'all') {
-          const currentRepo = issue.repoName || issue.repository?.name;
-          if (currentRepo !== selectedRepo) return false;
+          const repoNameInIssue = (
+            issue.repoName ||
+            issue.repository?.name ||
+            issue.project?.name ||
+            ''
+          ).toLowerCase();
+
+          const selected = selectedRepo.toLowerCase();
+
+          // Check if either string contains the other (handles "RepoLens" vs "ayeshatehreem77/RepoLens")
+          if (!repoNameInIssue.includes(selected) && !selected.includes(repoNameInIssue)) {
+            return false;
+          }
         }
 
         // Label Filter
@@ -104,13 +116,13 @@ export default function IssuesPage() {
       })
       .sort((a, b) => {
         if (sortBy === 'created') {
-          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+          return new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0);
         }
         if (sortBy === 'comments') {
           return (b.commentsCount || b.comments || 0) - (a.commentsCount || a.comments || 0);
         }
         // Default: Recently updated
-        return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
+        return new Date(b.updatedAt || b.updated_at || b.createdAt || 0) - new Date(a.updatedAt || a.updated_at || a.createdAt || 0);
       });
   }, [issues, searchQuery, statusFilter, selectedRepo, selectedLabel, sortBy]);
 
@@ -134,13 +146,23 @@ export default function IssuesPage() {
     <AppLayout>
       <div className="space-y-6">
         {/* Page Header */}
-        <div className="pb-4 border-b border-white/5">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <CircleDot className="w-6 h-6 text-purple-400" /> Issues
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Track and understand issues across your connected repositories.
-          </p>
+        <div className="pb-4 border-b border-white/5 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+              <CircleDot className="w-6 h-6 text-purple-400" /> Issues
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+              Track and understand issues across your connected repositories.
+            </p>
+          </div>
+          <button
+            onClick={fetchIssuesData}
+            disabled={loading}
+            className="px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-200 text-xs font-medium flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-purple-400 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
         </div>
 
         {/* Search & Filter Controls */}
@@ -167,11 +189,10 @@ export default function IssuesPage() {
                 <button
                   key={st.id}
                   onClick={() => setStatusFilter(st.id)}
-                  className={`px-3 py-1 rounded-lg font-medium transition-all ${
-                    statusFilter === st.id
-                      ? 'bg-purple-600/30 text-purple-200 border border-purple-500/30'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
+                  className={`px-3 py-1 rounded-lg font-medium transition-all ${statusFilter === st.id
+                    ? 'bg-purple-600/30 text-purple-200 border border-purple-500/30'
+                    : 'text-slate-400 hover:text-slate-200'
+                    }`}
                 >
                   {st.label}
                 </button>
@@ -212,7 +233,7 @@ export default function IssuesPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-slate-950/60 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-purple-500/50 ml-auto"
+              className="bg-slate-950/60 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-purple-500/50 sm:ml-auto"
             >
               <option value="updated">Recently Updated</option>
               <option value="created">Recently Created</option>
@@ -236,7 +257,6 @@ export default function IssuesPage() {
 
         {/* Issue List View */}
         {loading ? (
-          /* Skeleton Loading State */
           <div className="space-y-3">
             {[1, 2, 3, 4].map((n) => (
               <div key={n} className="p-4 rounded-2xl bg-slate-900/40 border border-white/5 animate-pulse space-y-2">
@@ -246,7 +266,6 @@ export default function IssuesPage() {
             ))}
           </div>
         ) : filteredIssues.length === 0 ? (
-          /* Empty State */
           <div className="p-8 sm:p-12 text-center rounded-2xl bg-slate-900/30 border border-white/5 flex flex-col items-center justify-center">
             <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4">
               <CircleDot className="w-6 h-6" />
@@ -257,11 +276,10 @@ export default function IssuesPage() {
             </p>
           </div>
         ) : (
-          /* Issue Cards */
           <div className="space-y-3">
             {filteredIssues.map((issue) => {
               const isOpen = issue.state === 'open' || issue.isOpen !== false;
-              const repoName = issue.repoName || issue.repository?.name || 'repoLens';
+              const repoName = issue.repoName || issue.repository?.name || issue.repo || 'Repository';
               const authorName = issue.author?.login || issue.user?.login || issue.author || 'Contributor';
 
               return (
@@ -272,7 +290,6 @@ export default function IssuesPage() {
                   className="p-4 rounded-2xl bg-slate-900/40 hover:bg-slate-900/80 border border-white/10 hover:border-purple-500/30 transition-all cursor-pointer flex items-start justify-between gap-4 group"
                 >
                   <div className="flex items-start gap-3 min-w-0">
-                    {/* Status Icon */}
                     {isOpen ? (
                       <CircleDot className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                     ) : (
@@ -280,14 +297,12 @@ export default function IssuesPage() {
                     )}
 
                     <div className="space-y-1.5 min-w-0">
-                      {/* Title & Number */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm text-white group-hover:text-purple-300 transition-colors">
                           #{issue.number} {issue.title}
                         </span>
                       </div>
 
-                      {/* Repo & Labels */}
                       <div className="flex items-center gap-2 flex-wrap text-[11px]">
                         <span className="font-mono text-slate-400 flex items-center gap-1">
                           <GitFork className="w-3 h-3 text-slate-500" /> {repoName}
@@ -307,12 +322,11 @@ export default function IssuesPage() {
                           })}
                       </div>
 
-                      {/* Author & Timestamp */}
                       <div className="flex items-center gap-3 text-[11px] text-slate-500 font-mono">
                         <span>Opened by {authorName}</span>
                         <span>•</span>
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {formatTimeAgo(issue.createdAt || issue.updatedAt)}
+                          <Clock className="w-3 h-3" /> {formatTimeAgo(issue.createdAt || issue.created_at || issue.updatedAt)}
                         </span>
                         {(issue.commentsCount > 0 || issue.comments > 0) && (
                           <span className="flex items-center gap-1 text-slate-400">
@@ -323,13 +337,11 @@ export default function IssuesPage() {
                     </div>
                   </div>
 
-                  {/* Status Badge */}
                   <span
-                    className={`text-[10px] font-mono uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full border shrink-0 ${
-                      isOpen
-                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                        : 'bg-purple-500/10 border-purple-500/20 text-purple-400'
-                    }`}
+                    className={`text-[10px] font-mono uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full border shrink-0 ${isOpen
+                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                      : 'bg-purple-500/10 border-purple-500/20 text-purple-400'
+                      }`}
                   >
                     {isOpen ? 'Open' : 'Closed'}
                   </span>
@@ -366,7 +378,7 @@ export default function IssuesPage() {
 
               <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
                 <GitFork className="w-3.5 h-3.5 text-purple-400" />
-                <span>{selectedIssue.repoName || selectedIssue.repository?.name || 'repoLens'}</span>
+                <span>{selectedIssue.repoName || selectedIssue.repository?.name || selectedIssue.repo || 'Repository'}</span>
                 <span>•</span>
                 <span>#{selectedIssue.number}</span>
               </div>
@@ -375,11 +387,10 @@ export default function IssuesPage() {
 
               <div className="flex items-center gap-3 text-xs border-y border-white/10 py-3">
                 <span
-                  className={`text-[10px] font-mono uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full border ${
-                    selectedIssue.state === 'open' || selectedIssue.isOpen !== false
-                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                      : 'bg-purple-500/10 border-purple-500/20 text-purple-400'
-                  }`}
+                  className={`text-[10px] font-mono uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full border ${selectedIssue.state === 'open' || selectedIssue.isOpen !== false
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                    : 'bg-purple-500/10 border-purple-500/20 text-purple-400'
+                    }`}
                 >
                   {selectedIssue.state === 'open' || selectedIssue.isOpen !== false ? 'Open' : 'Closed'}
                 </span>
@@ -392,11 +403,10 @@ export default function IssuesPage() {
                 </span>
 
                 <span className="text-slate-500 font-mono text-[11px] ml-auto">
-                  {formatTimeAgo(selectedIssue.createdAt)}
+                  {formatTimeAgo(selectedIssue.createdAt || selectedIssue.created_at)}
                 </span>
               </div>
 
-              {/* Description Body */}
               <div className="p-4 rounded-xl bg-slate-950/60 border border-white/5 text-xs text-slate-300 space-y-2">
                 <div className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Description</div>
                 <p className="whitespace-pre-wrap leading-relaxed">
@@ -404,7 +414,6 @@ export default function IssuesPage() {
                 </p>
               </div>
 
-              {/* Labels & Assignee */}
               <div className="flex flex-wrap items-center justify-between gap-4 pt-2 text-xs">
                 {Array.isArray(selectedIssue.labels) && selectedIssue.labels.length > 0 && (
                   <div className="flex items-center gap-2">

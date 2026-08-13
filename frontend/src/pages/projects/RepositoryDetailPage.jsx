@@ -5,8 +5,6 @@ import {
   Star,
   CircleDot,
   GitPullRequest,
-  GitBranch,
-  FileText,
   Clock,
   ArrowLeft,
   AlertCircle,
@@ -14,14 +12,14 @@ import {
   Globe
 } from 'lucide-react';
 import AppLayout from '../../layouts/AppLayout';
-import { apiRequest } from '../../services/api';
+import { githubService } from '../../services/api';
 
 export default function RepositoryDetailPage() {
   const { owner, repo } = useParams();
 
   const [repoDetails, setRepoDetails] = useState(null);
-  const [readme, setReadme] = useState('');
-  const [branches, setBranches] = useState([]);
+  const [issues, setIssues] = useState([]);
+  const [pulls, setPulls] = useState([]);
   const [commits, setCommits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,23 +29,23 @@ export default function RepositoryDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const [details, readmeData, branchList, commitList] = await Promise.all([
-          githubService.getRepositoryDetails(owner, repo).catch(() => null),
-          githubService.getReadme(owner, repo).catch(() => ''),
-          githubService.getBranches(owner, repo).catch(() => []),
-          githubService.getCommits(owner, repo).catch(() => []),
+        const [detailsData, issuesData, pullsData, commitsData] = await Promise.all([
+          githubService.getRepository(owner, repo).catch(() => null),
+          githubService.getRepositoryIssues(owner, repo).catch(() => []),
+          githubService.getRepositoryPullRequests(owner, repo).catch(() => []),
+          githubService.getRepositoryCommits(owner, repo).catch(() => []),
         ]);
 
-        if (!details) {
-          throw new Error('Repository details could not be retrieved.');
+        if (!detailsData) {
+          throw new Error('Repository could not be fetched.');
         }
 
-        setRepoDetails(details);
-        setReadme(typeof readmeData === 'string' ? readmeData : readmeData?.content || '');
-        setBranches(Array.isArray(branchList) ? branchList : []);
-        setCommits(Array.isArray(commitList) ? commitList : []);
+        setRepoDetails(detailsData);
+        setIssues(Array.isArray(issuesData) ? issuesData : []);
+        setPulls(Array.isArray(pullsData) ? pullsData : []);
+        setCommits(Array.isArray(commitsData) ? commitsData : []);
       } catch (err) {
-        setError(err.message || 'Error loading repository overview.');
+        setError(err.message || 'Error loading repository details.');
       } finally {
         setLoading(false);
       }
@@ -86,7 +84,6 @@ export default function RepositoryDetailPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Header info */}
             <div className="p-6 rounded-2xl bg-slate-900/50 border border-white/10 space-y-4">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div>
@@ -95,82 +92,95 @@ export default function RepositoryDetailPage() {
                     <span>{owner}</span> / <span className="text-purple-300">{repo}</span>
                   </h1>
                   <p className="text-xs text-slate-400 mt-1">
-                    {repoDetails?.description || 'No description available for this repository.'}
+                    {repoDetails?.description || 'No description available.'}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-slate-300 flex items-center gap-1">
-                    {repoDetails?.private ? <Lock className="w-3 h-3 text-amber-400" /> : <Globe className="w-3 h-3 text-slate-400" />}
-                    {repoDetails?.private ? 'Private' : 'Public'}
-                  </span>
-                </div>
+                <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-slate-300 flex items-center gap-1">
+                  {repoDetails?.private ? <Lock className="w-3 h-3 text-amber-400" /> : <Globe className="w-3 h-3 text-slate-400" />}
+                  {repoDetails?.private ? 'Private' : 'Public'}
+                </span>
               </div>
 
-              {/* Stats Bar */}
               <div className="flex items-center gap-4 text-xs font-mono text-slate-400 pt-2 border-t border-white/5">
                 <span className="flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 text-amber-400" /> {repoDetails?.stargazersCount || 0} stars
+                  <Star className="w-3.5 h-3.5 text-amber-400" /> {repoDetails?.stargazers_count ?? repoDetails?.stargazersCount ?? 0} stars
                 </span>
                 <span className="flex items-center gap-1">
-                  <GitFork className="w-3.5 h-3.5 text-indigo-400" /> {repoDetails?.forksCount || 0} forks
+                  <GitFork className="w-3.5 h-3.5 text-indigo-400" /> {repoDetails?.forks_count ?? repoDetails?.forksCount ?? 0} forks
                 </span>
                 <span className="flex items-center gap-1">
-                  <CircleDot className="w-3.5 h-3.5 text-purple-400" /> {repoDetails?.openIssuesCount || 0} open issues
+                  <CircleDot className="w-3.5 h-3.5 text-purple-400" /> {repoDetails?.open_issues_count ?? repoDetails?.openIssuesCount ?? 0} open issues
                 </span>
               </div>
             </div>
 
-            {/* Commits & Readme Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
-                {/* README */}
-                <div className="p-6 rounded-2xl bg-slate-900/40 border border-white/10 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 border-b border-white/5 pb-3">
-                    <FileText className="w-4 h-4 text-purple-400" /> README.md
+                {/* Issues */}
+                <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10 space-y-3">
+                  <h3 className="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                    <CircleDot className="w-4 h-4 text-purple-400" /> Issues ({issues.length})
+                  </h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto text-xs">
+                    {issues.length === 0 ? (
+                      <p className="text-slate-500">No issues found.</p>
+                    ) : (
+                      issues.slice(0, 10).map((issue) => (
+                        <div key={issue.id} className="p-2.5 rounded-xl bg-slate-950/50 border border-white/5 space-y-1">
+                          <p className="text-white font-medium truncate">{issue.title}</p>
+                          <p className="text-[10px] text-slate-500 font-mono">
+                            #{issue.number} opened by {issue.user?.login || 'unknown'}
+                          </p>
+                        </div>
+                      ))
+                    )}
                   </div>
-                  <div className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed max-h-96 overflow-y-auto">
-                    {readme || 'No README file found.'}
+                </div>
+
+                {/* Pull Requests */}
+                <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10 space-y-3">
+                  <h3 className="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                    <GitPullRequest className="w-4 h-4 text-purple-400" /> Pull Requests ({pulls.length})
+                  </h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto text-xs">
+                    {pulls.length === 0 ? (
+                      <p className="text-slate-500">No pull requests found.</p>
+                    ) : (
+                      pulls.slice(0, 10).map((pr) => (
+                        <div key={pr.id} className="p-2.5 rounded-xl bg-slate-950/50 border border-white/5 space-y-1">
+                          <p className="text-white font-medium truncate">{pr.title}</p>
+                          <p className="text-[10px] text-slate-500 font-mono">
+                            #{pr.number} by {pr.user?.login || 'unknown'}
+                          </p>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Branches & Commits */}
-              <div className="space-y-6">
-                {/* Branches */}
-                {branches.length > 0 && (
-                  <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10 space-y-3">
-                    <h3 className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-                      <GitBranch className="w-4 h-4 text-purple-400" /> Branches ({branches.length})
-                    </h3>
-                    <div className="space-y-1.5 max-h-40 overflow-y-auto text-xs font-mono">
-                      {branches.map((b) => (
-                        <div key={b.name} className="px-2.5 py-1.5 rounded-lg bg-slate-950/50 border border-white/5 text-slate-300">
-                          {b.name}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Commits */}
-                {commits.length > 0 && (
-                  <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10 space-y-3">
-                    <h3 className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-purple-400" /> Recent Commits
-                    </h3>
-                    <div className="space-y-2 max-h-60 overflow-y-auto text-xs">
-                      {commits.map((c, i) => (
+              {/* Commits */}
+              <div>
+                <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10 space-y-3">
+                  <h3 className="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-purple-400" /> Recent Commits ({commits.length})
+                  </h3>
+                  <div className="space-y-2 max-h-96 overflow-y-auto text-xs">
+                    {commits.length === 0 ? (
+                      <p className="text-slate-500">No commits found.</p>
+                    ) : (
+                      commits.slice(0, 15).map((c, i) => (
                         <div key={i} className="p-2.5 rounded-xl bg-slate-950/50 border border-white/5 space-y-1">
                           <p className="text-white truncate font-medium">{c.commit?.message || c.message}</p>
                           <p className="text-[10px] text-slate-500 font-mono">
-                            {c.commit?.author?.name || c.author}
+                            {c.commit?.author?.name || c.author || 'Author'}
                           </p>
                         </div>
-                      ))}
-                    </div>
+                      ))
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>

@@ -31,9 +31,6 @@ export class GithubService {
         });
     }
 
-    /**
-     * Helper to wrap Octokit API calls with unified error handling
-     */
     private async handleGithubError<T>(fn: () => Promise<T>): Promise<T> {
         try {
             return await fn();

@@ -26,7 +26,8 @@ export function AuthProvider({ children }) {
           localStorage.setItem('repolens_user', JSON.stringify(userData));
         }
 
-        const ghProfile = await githubService.getGithubUser().catch(() => null);
+        // Call GET /github/me
+        const ghProfile = await githubService.getAuthenticatedUser().catch(() => null);
         if (ghProfile) {
           setGithubUser(ghProfile);
         }
@@ -54,7 +55,7 @@ export function AuthProvider({ children }) {
       setUser(data.user);
       localStorage.setItem('repolens_user', JSON.stringify(data.user));
 
-      githubService.getGithubUser().then(setGithubUser).catch(() => {});
+      githubService.getAuthenticatedUser().then(setGithubUser).catch(() => {});
     }
     return data;
   };

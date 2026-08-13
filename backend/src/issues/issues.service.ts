@@ -17,7 +17,7 @@ export class IssuesService {
     private readonly prisma: PrismaService,
     private readonly githubService: GithubService,
     private readonly projectsService: ProjectsService,
-  ) {}
+  ) { }
 
   /**
    * Validates that the project exists and belongs to the authenticated user.
@@ -30,11 +30,76 @@ export class IssuesService {
   }
 
   /**
+   * Fetch all database issues for all projects owned by the user.
+   */
+  async getAllIssuesForUser(userId: string) {
+    if (!userId) {
+      throw new UnauthorizedException('User identification missing from token.');
+    }
+
+    // 1. Try fetching synced issues from database
+    let dbIssues = await this.prisma.issue.findMany({
+      where: { project: { userId } },
+      include: {
+        project: {
+          select: { id: true, name: true, owner: true },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    // 2. Fallback: If DB is empty, fetch live from GitHub across user projects
+    if (dbIssues.length === 0) {
+      const userProjects = await this.projectsService.getUserProjects(userId);
+
+      const liveIssuesNested = await Promise.all(
+        userProjects.map(async (project) => {
+          try {
+            const issues = await this.githubService.getRepositoryIssues(project.owner, project.name);
+            return (issues || [])
+              .filter((iss: any) => !iss.pull_request)
+              .map((iss: any) => ({
+                id: String(iss.id),
+                githubId: iss.id,
+                number: iss.number,
+                title: iss.title,
+                body: iss.body,
+                state: iss.state,
+                author: iss.user?.login,
+                labels: iss.labels ? iss.labels.map((l: any) => (typeof l === 'string' ? l : l.name)) : [],
+                comments: iss.comments || 0,
+                createdAt: iss.created_at,
+                updatedAt: iss.updated_at,
+                repoName: project.name,
+                repository: { id: project.id, name: project.name, owner: project.owner },
+              }));
+          } catch {
+            return [];
+          }
+        })
+      );
+
+      return liveIssuesNested.flat();
+    }
+
+    // Map DB issues
+    return dbIssues.map((issue) => ({
+      ...issue,
+      repoName: issue.project?.name,
+      repository: {
+        id: issue.project?.id,
+        name: issue.project?.name,
+        owner: issue.project?.owner,
+      },
+    }));
+  }
+
+  /**
    * Fetch issues directly from GitHub for a project.
    */
   async getGithubIssuesForProject(userId: string, projectId: string) {
     const project = await this.validateProjectOwnership(userId, projectId);
-    
+
     // Fetch issues using existing GithubService instance
     const issues = await this.githubService.getRepositoryIssues(
       project.owner,
@@ -65,8 +130,8 @@ export class IssuesService {
         const githubId = issue.id;
         const labelsData = issue.labels
           ? issue.labels.map((label: any) =>
-              typeof label === 'string' ? label : label.name,
-            )
+            typeof label === 'string' ? label : label.name,
+          )
           : [];
 
         return this.prisma.issue.upsert({

@@ -23,7 +23,7 @@ import {
 import { useNavigate, Link } from 'react-router-dom';
 import AppLayout from '../../layouts/AppLayout';
 import { useAuth } from '../../context/AuthContext';
-import { apiRequest } from '../../services/api';
+import { githubService, apiRequest } from '../../services/api';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -43,8 +43,8 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch projects/repositories
-      const repoData = await apiRequest('/projects').catch(() => []);
+      // Fix: Fetch directly from /github/repos instead of /projects
+      const repoData = await githubService.getRepositories().catch(() => []);
       const activityData = await apiRequest('/activity').catch(() => []);
 
       setRepos(Array.isArray(repoData) ? repoData : []);
@@ -63,7 +63,6 @@ export default function DashboardPage() {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await apiRequest('/projects/sync', { method: 'POST' }).catch(() => {});
       await fetchDashboardData();
     } catch {
       // Gracefully ignore sync errors
@@ -77,9 +76,9 @@ export default function DashboardPage() {
     setAiModalOpen(true);
   };
 
-  // Derive stats safely without hardcoded fake data
+  // Derive stats safely
   const totalRepos = repos.length;
-  const totalOpenIssues = repos.reduce((acc, r) => acc + (r.openIssuesCount || r.issuesCount || 0), 0);
+  const totalOpenIssues = repos.reduce((acc, r) => acc + (r.open_issues_count ?? r.openIssuesCount ?? 0), 0);
   const totalPRs = repos.reduce((acc, r) => acc + (r.openPRsCount || r.pullRequestsCount || 0), 0);
 
   return (
@@ -194,7 +193,7 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-400">Your connected GitHub repositories.</p>
           </div>
           <Link
-            to="/projects"
+            to="/repositories"
             className="text-xs text-purple-400 hover:text-purple-300 font-medium flex items-center gap-1 transition-colors"
           >
             View all <ArrowRight className="w-3 h-3" />
@@ -236,7 +235,7 @@ export default function DashboardPage() {
               <motion.div
                 key={repo.id || repo._id}
                 whileHover={{ y: -3, transition: { duration: 0.2 } }}
-                onClick={() => navigate(`/projects/${repo.owner?.login || repo.owner || 'user'}/${repo.name}`)}
+                onClick={() => navigate(`/repositories/${repo.owner?.login || repo.owner || 'user'}/${repo.name}`)}
                 className="p-5 rounded-2xl bg-slate-900/50 hover:bg-slate-900/80 border border-white/10 hover:border-purple-500/40 transition-all cursor-pointer group flex flex-col justify-between shadow-lg"
               >
                 <div>
@@ -253,7 +252,7 @@ export default function DashboardPage() {
                   </div>
 
                   <p className="text-xs text-slate-400 font-mono mb-4 truncate">
-                    {repo.fullName || `${repo.owner?.login || repo.owner || 'user'}/${repo.name}`}
+                    {repo.full_name || repo.fullName || `${repo.owner?.login || repo.owner || 'user'}/${repo.name}`}
                   </p>
 
                   <div className="flex items-center gap-2 text-[11px] text-slate-400 mb-4">
@@ -271,10 +270,10 @@ export default function DashboardPage() {
                 <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
                   <div className="flex items-center gap-3 font-mono text-[11px]">
                     <span className="flex items-center gap-1">
-                      <Star className="w-3 h-3 text-amber-400" /> {repo.stargazersCount || repo.stars || 0}
+                      <Star className="w-3 h-3 text-amber-400" /> {repo.stargazers_count ?? repo.stargazersCount ?? 0}
                     </span>
                     <span className="flex items-center gap-1">
-                      <CircleDot className="w-3 h-3 text-purple-400" /> {repo.openIssuesCount || 0}
+                      <CircleDot className="w-3 h-3 text-purple-400" /> {repo.open_issues_count ?? repo.openIssuesCount ?? 0}
                     </span>
                     <span className="flex items-center gap-1">
                       <GitPullRequest className="w-3 h-3 text-indigo-400" /> {repo.openPRsCount || 0}

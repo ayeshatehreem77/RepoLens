@@ -23,6 +23,13 @@ export class IssuesController {
     return userId;
   }
 
+  // FIX: Add a base GET /issues endpoint to fetch all issues for the logged-in user
+  @Get()
+  async getAllUserIssues(@Req() req: any) {
+    const userId = this.extractUserId(req);
+    return this.issuesService.getAllIssuesForUser(userId);
+  }
+
   @Get('project/:projectId')
   async getGithubIssuesForProject(
     @Req() req: any,

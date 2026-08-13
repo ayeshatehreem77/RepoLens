@@ -41,7 +41,7 @@ export default function PullRequestsPage() {
     try {
       const [prsData, reposData] = await Promise.all([
         apiRequest('/pull-requests').catch(() => []),
-        apiRequest('/projects').catch(() => []),
+        apiRequest('/github').catch(() => []),
       ]);
 
       setPullRequests(Array.isArray(prsData) ? prsData : []);
@@ -60,7 +60,7 @@ export default function PullRequestsPage() {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await apiRequest('/projects/sync', { method: 'POST' }).catch(() => {});
+      await apiRequest('/projects/repos', { method: 'POST' }).catch(() => {});
       await fetchPRData();
     } catch {
       // Sync error handled quietly

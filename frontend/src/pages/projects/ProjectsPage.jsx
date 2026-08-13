@@ -1,47 +1,41 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import {
-  GitFork,
-  Search,
-  RefreshCw,
-  Star,
-  CircleDot,
-  GitPullRequest,
-  ArrowRight,
-  AlertCircle,
-  Clock,
-  Filter,
-  CheckCircle2,
-  Lock,
-  Globe
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { 
+  Search, 
+  RefreshCw, 
+  Star, 
+  GitFork, 
+  CircleDot, 
+  Lock, 
+  Globe, 
+  AlertCircle, 
+  FolderGit2 
 } from 'lucide-react';
 import AppLayout from '../../layouts/AppLayout';
-import { apiRequest } from '../../services/api';
+import { githubService } from '../../services/api';
 
 export default function ProjectsPage() {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const [repos, setRepos] = useState([]);
+  const [repositories, setRepositories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [languageFilter, setLanguageFilter] = useState('ALL');
 
-  // Search & Filter state synced with URL parameter if present
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'public' | 'private' | 'updated'
-
-  const fetchRepositories = async () => {
-    setLoading(true);
+  // Fix: Sync button calls GET /github/repos directly
+  const fetchRepositories = async (isSync = false) => {
+    if (isSync) setSyncing(true);
+    else setLoading(true);
     setError(null);
+
     try {
-      const data = await apiRequest('/projects');
-      setRepos(Array.isArray(data) ? data : []);
+      const data = await githubService.getRepositories();
+      setRepositories(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message || 'Unable to load repository data.');
+      setError(err.message || 'Failed to fetch repositories.');
     } finally {
       setLoading(false);
+      setSyncing(false);
     }
   };
 
@@ -49,254 +43,138 @@ export default function ProjectsPage() {
     fetchRepositories();
   }, []);
 
-  // Update query state if search param in URL changes
-  useEffect(() => {
-    const queryFromUrl = searchParams.get('search');
-    if (queryFromUrl !== null) {
-      setSearchQuery(queryFromUrl);
-    }
-  }, [searchParams]);
+  const languages = ['ALL', ...new Set(repositories.map((r) => r.language).filter(Boolean))];
 
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      await apiRequest('/projects/sync', { method: 'POST' }).catch(() => {});
-      await fetchRepositories();
-    } catch {
-      // Sync errors handled silently or through reload
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  // Filter & Search Logic
-  const filteredRepos = useMemo(() => {
-    return repos
-      .filter((repo) => {
-        // Text Search
-        const nameMatch = repo.name?.toLowerCase().includes(searchQuery.toLowerCase());
-        const ownerMatch = (repo.fullName || repo.owner?.login || repo.owner || '')
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase());
-        const langMatch = repo.language?.toLowerCase().includes(searchQuery.toLowerCase());
-
-        if (searchQuery && !nameMatch && !ownerMatch && !langMatch) {
-          return false;
-        }
-
-        // Filter Tabs
-        if (activeFilter === 'public') return !repo.private;
-        if (activeFilter === 'private') return repo.private;
-
-        return true;
-      })
-      .sort((a, b) => {
-        if (activeFilter === 'updated') {
-          return new Date(b.updatedAt || b.pushedAt || 0) - new Date(a.updatedAt || a.pushedAt || 0);
-        }
-        return 0;
-      });
-  }, [repos, searchQuery, activeFilter]);
-
-  const formatTimeAgo = (dateString) => {
-    if (!dateString) return 'Recently';
-    const date = new Date(dateString);
-    const now = new Date();
-    const seconds = Math.floor((now - date) / 1000);
-
-    if (seconds < 60) return 'Just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}d ago`;
-    return date.toLocaleDateString();
-  };
+  const filteredRepositories = repositories.filter((repo) => {
+    const matchesSearch =
+      repo.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      repo.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLang = languageFilter === 'ALL' || repo.language === languageFilter;
+    return matchesSearch && matchesLang;
+  });
 
   return (
-    <AppLayout onSync={handleSync} isSyncing={syncing}>
+    <AppLayout>
       <div className="space-y-6">
-        {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-              <GitFork className="w-6 h-6 text-purple-400" /> Repositories
+            <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+              <FolderGit2 className="w-6 h-6 text-purple-400" />
+              Repositories
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Explore and manage your connected GitHub repositories.
+            <p className="text-xs text-slate-400 mt-1">
+              Live GitHub repository data from endpoint GET /github/repos
             </p>
           </div>
 
           <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="self-start sm:self-center px-3.5 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-200 text-xs font-medium flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+            onClick={() => fetchRepositories(true)}
+            disabled={loading || syncing}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-medium text-xs rounded-xl transition-all shadow-lg shadow-purple-950/20"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-purple-400 ${syncing ? 'animate-spin' : ''}`} />
-            <span>{syncing ? 'Syncing...' : 'Sync GitHub'}</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Refreshing...' : 'Sync GitHub'}
           </button>
         </div>
 
-        {/* Filter & Search Toolbar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setSearchParams(e.target.value ? { search: e.target.value } : {});
-              }}
               placeholder="Search repositories..."
-              className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all shadow-inner"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-900/60 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
             />
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-950/60 border border-white/10 rounded-xl overflow-x-auto shrink-0">
-            {[
-              { id: 'all', label: 'All' },
-              { id: 'public', label: 'Public' },
-              { id: 'private', label: 'Private' },
-              { id: 'updated', label: 'Recently Updated' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveFilter(tab.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                  activeFilter === tab.id
-                    ? 'bg-purple-600/30 text-purple-200 border border-purple-500/30'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-                }`}
-              >
-                {tab.label}
-              </button>
+          <select
+            value={languageFilter}
+            onChange={(e) => setLanguageFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-900/60 border border-white/10 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-purple-500 transition-colors"
+          >
+            {languages.map((lang) => (
+              <option key={lang} value={lang} className="bg-slate-900 text-white">
+                {lang === 'ALL' ? 'All Languages' : lang}
+              </option>
             ))}
-          </div>
+          </select>
         </div>
 
-        {/* Error Banner */}
-        {error && (
-          <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center justify-between">
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="p-5 rounded-2xl bg-slate-900/40 border border-white/5 animate-pulse space-y-3">
+                <div className="h-4 bg-slate-800 rounded w-1/2" />
+                <div className="h-3 bg-slate-800/60 rounded w-3/4" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
-            <button onClick={fetchRepositories} className="underline hover:text-red-300 font-medium">
+            <button
+              onClick={() => fetchRepositories()}
+              className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded-lg font-medium transition-colors"
+            >
               Retry
             </button>
           </div>
-        )}
-
-        {/* Repositories Grid / List */}
-        {loading ? (
-          /* Skeleton Loader Grid */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <div key={n} className="p-5 rounded-2xl bg-slate-900/40 border border-white/5 animate-pulse space-y-3">
-                <div className="flex justify-between items-center">
-                  <div className="h-4 bg-slate-800 rounded w-1/2" />
-                  <div className="h-4 bg-slate-800/60 rounded w-12" />
-                </div>
-                <div className="h-3 bg-slate-800/60 rounded w-3/4" />
-                <div className="h-8 bg-slate-800/40 rounded w-full mt-4" />
-              </div>
-            ))}
-          </div>
-        ) : filteredRepos.length === 0 ? (
-          /* Empty State */
-          <div className="p-8 sm:p-12 text-center rounded-2xl bg-slate-900/30 border border-white/5 flex flex-col items-center justify-center">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4">
-              <GitFork className="w-6 h-6" />
-            </div>
-            <h3 className="text-sm font-semibold text-white">No repositories found</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm">
-              {searchQuery
-                ? `No repositories match "${searchQuery}". Try clearing your filters or search query.`
-                : 'Connect or sync your GitHub repositories to start exploring your codebase.'}
-            </p>
-            <button
-              onClick={handleSync}
-              className="mt-4 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium transition-all shadow-lg shadow-purple-600/20"
-            >
-              Sync GitHub
-            </button>
+        ) : filteredRepositories.length === 0 ? (
+          <div className="p-12 text-center rounded-2xl bg-slate-900/40 border border-white/5 space-y-2">
+            <p className="text-sm text-slate-300 font-medium">No repositories found</p>
           </div>
         ) : (
-          /* Repository Cards */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredRepos.map((repo) => {
-              const ownerName = repo.owner?.login || repo.owner || 'developer';
-              const fullRepoPath = `/repositories/${ownerName}/${repo.name}`;
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredRepositories.map((repo) => (
+              <Link
+                key={repo.id}
+                to={`/repositories/${repo.owner?.login || repo.owner}/${repo.name}`}
+                className="p-5 rounded-2xl bg-slate-900/50 border border-white/10 hover:border-purple-500/40 hover:bg-slate-900/80 transition-all group space-y-3 block"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-semibold text-sm text-white group-hover:text-purple-300 transition-colors truncate">
+                    {repo.name}
+                  </h3>
+                  <span className="shrink-0 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-slate-400 flex items-center gap-1">
+                    {repo.private ? <Lock className="w-2.5 h-2.5 text-amber-400" /> : <Globe className="w-2.5 h-2.5 text-slate-400" />}
+                    {repo.private ? 'Private' : 'Public'}
+                  </span>
+                </div>
 
-              return (
-                <motion.div
-                  key={repo.id || repo._id}
-                  whileHover={{ y: -3, transition: { duration: 0.2 } }}
-                  onClick={() => navigate(fullRepoPath)}
-                  className="p-5 rounded-2xl bg-slate-900/50 hover:bg-slate-900/80 border border-white/10 hover:border-purple-500/40 transition-all cursor-pointer group flex flex-col justify-between shadow-lg relative overflow-hidden"
-                >
-                  <div>
-                    {/* Header line: Title + Status */}
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <GitFork className="w-4 h-4 text-purple-400 shrink-0" />
-                        <span className="font-semibold text-sm text-white group-hover:text-purple-300 transition-colors truncate">
-                          {repo.name}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Healthy
+                <p className="text-xs text-slate-400 line-clamp-2 h-8">
+                  {repo.description || 'No description provided.'}
+                </p>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-white/5">
+                  <div className="flex items-center gap-3">
+                    {repo.language && (
+                      <span className="flex items-center gap-1 text-slate-400 font-medium">
+                        <span className="w-2 h-2 rounded-full bg-purple-400" />
+                        {repo.language}
                       </span>
-                    </div>
-
-                    {/* Owner / Name */}
-                    <p className="text-xs text-slate-400 font-mono mb-3 truncate">
-                      {repo.fullName || `${ownerName}/${repo.name}`}
-                    </p>
-
-                    {/* Tags: Language + Public/Private */}
-                    <div className="flex items-center gap-2 text-[11px] text-slate-400 mb-4">
-                      {repo.language && (
-                        <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-slate-300">
-                          {repo.language}
-                        </span>
-                      )}
-                      <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-slate-300 flex items-center gap-1">
-                        {repo.private ? <Lock className="w-3 h-3 text-amber-400" /> : <Globe className="w-3 h-3 text-slate-400" />}
-                        {repo.private ? 'Private' : 'Public'}
-                      </span>
-                    </div>
+                    )}
+                    <span className="flex items-center gap-0.5">
+                      <Star className="w-3 h-3 text-amber-400" /> {repo.stargazers_count ?? 0}
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <GitFork className="w-3 h-3 text-indigo-400" /> {repo.forks_count ?? 0}
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <CircleDot className="w-3 h-3 text-purple-400" /> {repo.open_issues_count ?? 0}
+                    </span>
                   </div>
 
-                  {/* Footer metadata */}
-                  <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
-                    <div className="flex items-center gap-3 font-mono text-[11px]">
-                      <span className="flex items-center gap-1" title="Stars">
-                        <Star className="w-3 h-3 text-amber-400" /> {repo.stargazersCount || repo.stars || 0}
-                      </span>
-                      <span className="flex items-center gap-1" title="Forks">
-                        <GitFork className="w-3 h-3 text-indigo-400" /> {repo.forksCount || repo.forks || 0}
-                      </span>
-                      <span className="flex items-center gap-1" title="Open Issues">
-                        <CircleDot className="w-3 h-3 text-purple-400" /> {repo.openIssuesCount || 0}
-                      </span>
-                      <span className="flex items-center gap-1" title="Pull Requests">
-                        <GitPullRequest className="w-3 h-3 text-blue-400" /> {repo.openPRsCount || 0}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                      <Clock className="w-3 h-3" />
-                      <span>{formatTimeAgo(repo.updatedAt || repo.pushedAt)}</span>
-                      <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-purple-400 group-hover:translate-x-1 transition-all ml-1" />
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
+                  {repo.updated_at && (
+                    <span>Updated {new Date(repo.updated_at).toLocaleDateString()}</span>
+                  )}
+                </div>
+              </Link>
+            ))}
           </div>
         )}
       </div>
