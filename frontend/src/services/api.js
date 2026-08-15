@@ -64,3 +64,26 @@ export const githubService = {
   // GET /github/repos/:owner/:repo/commits
   getRepositoryCommits: (owner, repo) => apiRequest(`/github/repos/${owner}/${repo}/commits`),
 };
+
+export const activityService = {
+  // GET /activity?page=1&limit=20
+  getUserActivities: (page = 1, limit = 20) =>
+    apiRequest(`/activity?page=${page}&limit=${limit}`),
+
+  // GET /activity/project/:projectId
+  getProjectActivities: (projectId) =>
+    apiRequest(`/activity/project/${projectId}`),
+
+  // POST /activity
+  createActivity: (activityData) =>
+    apiRequest('/activity', {
+      method: 'POST',
+      body: JSON.stringify(activityData),
+    }),
+
+  // DELETE /activity/:id
+  deleteActivity: (id) =>
+    apiRequest(`/activity/${id}`, {
+      method: 'DELETE',
+    }),
+};
