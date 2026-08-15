@@ -36,68 +36,29 @@ export default function IssuesPage() {
     setLoading(true);
     setError(null);
     try {
-      // 1. Fetch repos and database issues simultaneously
       const [issuesRes, reposRes] = await Promise.all([
-        apiRequest('/issues').catch(() => []),
-        githubService.getRepositories().catch(() => []),
+        apiRequest('/issues').catch((err) => {
+          console.error('Error fetching /issues:', err);
+          return [];
+        }),
+        githubService.getRepositories().catch((err) => {
+          console.error('Error fetching repos:', err);
+          return [];
+        })
       ]);
+
+      // Debugging logs to inspect network response
+      console.log('Fetched Issues Response:', issuesRes);
+      console.log('Fetched Repos Response:', reposRes);
+
+      // Safely extract array if backend wraps it in { data: [...] } or { issues: [...] }
+      const rawIssues = Array.isArray(issuesRes)
+        ? issuesRes
+        : issuesRes?.data || issuesRes?.issues || [];
 
       const rawRepos = Array.isArray(reposRes)
         ? reposRes
-        : reposRes?.data || [];
-
-      let rawIssues = Array.isArray(issuesRes)
-        ? issuesRes
-        : issuesRes?.data || [];
-
-      // 2. FALLBACK: If DB issues are empty, fetch live issues directly using repo details
-      if (rawIssues.length === 0 && rawRepos.length > 0) {
-        const liveIssuesPromises = rawRepos.map(async (repo) => {
-          try {
-            // Extracts owner and repo name (e.g. 'ayeshatehreem77' and 'RepoLens')
-            const owner = repo.owner?.login || repo.full_name?.split('/')[0];
-            const repoName = repo.name;
-
-            if (!owner || !repoName) return [];
-
-            const repoIssues = await apiRequest(
-              `/github/repos/${owner}/${repoName}/issues`
-            ).catch(() => []);
-
-            const issueList = Array.isArray(repoIssues)
-              ? repoIssues
-              : repoIssues?.data || [];
-
-            // Map GitHub REST issues into our component format
-            return issueList
-              .filter((iss) => !iss.pull_request) // Exclude PRs
-              .map((iss) => ({
-                id: String(iss.id),
-                githubId: iss.id,
-                number: iss.number,
-                title: iss.title,
-                body: iss.body || '',
-                state: iss.state,
-                author: iss.user?.login || 'Contributor',
-                labels: iss.labels ? iss.labels.map((l) => (typeof l === 'string' ? l : l.name)) : [],
-                commentsCount: iss.comments || 0,
-                createdAt: iss.created_at,
-                updatedAt: iss.updated_at,
-                repoName: repoName,
-                repository: {
-                  id: repo.id,
-                  name: repoName,
-                  owner: owner,
-                },
-              }));
-          } catch {
-            return [];
-          }
-        });
-
-        const nestedResults = await Promise.all(liveIssuesPromises);
-        rawIssues = nestedResults.flat();
-      }
+        : reposRes?.data || reposRes?.repositories || [];
 
       setIssues(rawIssues);
       setRepos(rawRepos);
@@ -127,57 +88,57 @@ export default function IssuesPage() {
     return Array.from(labelSet);
   }, [issues]);
 
-  const filteredIssues = useMemo(() => {
-    return issues
-      .filter((issue) => {
-        // 1. Text Search
-        const titleMatch = issue.title?.toLowerCase().includes(searchQuery.toLowerCase());
-        const numberMatch = issue.number?.toString().includes(searchQuery);
-        if (searchQuery && !titleMatch && !numberMatch) return false;
+ const filteredIssues = useMemo(() => {
+  return issues
+    .filter((issue) => {
+      // 1. Text Search
+      const titleMatch = issue.title?.toLowerCase().includes(searchQuery.toLowerCase());
+      const numberMatch = issue.number?.toString().includes(searchQuery);
+      if (searchQuery && !titleMatch && !numberMatch) return false;
 
-        // 2. Status Filter
-        const isOpen = issue.state === 'open' || issue.isOpen !== false;
-        if (statusFilter === 'open' && !isOpen) return false;
-        if (statusFilter === 'closed' && isOpen) return false;
+      // 2. Status Filter
+      const isOpen = issue.state === 'open' || issue.isOpen !== false;
+      if (statusFilter === 'open' && !isOpen) return false;
+      if (statusFilter === 'closed' && isOpen) return false;
 
-        // 3. Repository Filter (Loose Matching)
-        if (selectedRepo !== 'all') {
-          const issueRepoName = (
-            issue.repoName ||
-            issue.repository?.name ||
-            issue.project?.name ||
-            ''
-          ).toLowerCase();
+      // 3. Repository Filter (Loose Matching)
+      if (selectedRepo !== 'all') {
+        const issueRepoName = (
+          issue.repoName ||
+          issue.repository?.name ||
+          issue.project?.name ||
+          ''
+        ).toLowerCase();
+        
+        const filterRepoName = selectedRepo.toLowerCase();
 
-          const filterRepoName = selectedRepo.toLowerCase();
-
-          // Check if repo name matches or partially matches
-          if (
-            issueRepoName &&
-            !issueRepoName.includes(filterRepoName) &&
-            !filterRepoName.includes(issueRepoName)
-          ) {
-            return false;
-          }
+        // Check if repo name matches or partially matches
+        if (
+          issueRepoName &&
+          !issueRepoName.includes(filterRepoName) &&
+          !filterRepoName.includes(issueRepoName)
+        ) {
+          return false;
         }
+      }
 
-        // 4. Label Filter
-        if (selectedLabel !== 'all') {
-          const hasLabel = issue.labels?.some(
-            (l) => (typeof l === 'string' ? l : l.name) === selectedLabel
-          );
-          if (!hasLabel) return false;
-        }
+      // 4. Label Filter
+      if (selectedLabel !== 'all') {
+        const hasLabel = issue.labels?.some(
+          (l) => (typeof l === 'string' ? l : l.name) === selectedLabel
+        );
+        if (!hasLabel) return false;
+      }
 
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'created') {
-          return new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0);
-        }
-        return new Date(b.updatedAt || b.updated_at || b.createdAt || 0) - new Date(a.updatedAt || a.updated_at || a.createdAt || 0);
-      });
-  }, [issues, searchQuery, statusFilter, selectedRepo, selectedLabel, sortBy]);
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'created') {
+        return new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0);
+      }
+      return new Date(b.updatedAt || b.updated_at || b.createdAt || 0) - new Date(a.updatedAt || a.updated_at || a.createdAt || 0);
+    });
+}, [issues, searchQuery, statusFilter, selectedRepo, selectedLabel, sortBy]);
 
   const formatTimeAgo = (dateString) => {
     if (!dateString) return 'Recently';

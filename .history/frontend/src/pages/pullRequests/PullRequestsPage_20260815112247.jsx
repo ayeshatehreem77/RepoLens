@@ -100,7 +100,7 @@ const fetchPRData = async () => {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await apiRequest('/github/repos', { method: 'GET' }).catch(() => {});
+      await apiRequest('/projects/repos', { method: 'POST' }).catch(() => {});
       await fetchPRData();
     } catch {
       // Sync error handled quietly

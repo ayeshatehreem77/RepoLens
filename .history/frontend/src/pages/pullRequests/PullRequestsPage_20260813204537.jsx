@@ -17,7 +17,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import AppLayout from '../../layouts/AppLayout';
-import { apiRequest, githubService } from '../../services/api';
+import { apiRequest } from '../../services/api';
 
 export default function PullRequestsPage() {
   const [pullRequests, setPullRequests] = useState([]);
@@ -35,63 +35,23 @@ export default function PullRequestsPage() {
   // Modal State
   const [selectedPR, setSelectedPR] = useState(null);
 
-const fetchPRData = async () => {
-  setLoading(true);
-  setError(null);
-  try {
-    // 1. Fetch repositories and backend PRs simultaneously
-    const [prsData, reposData] = await Promise.all([
-      apiRequest('/pull-requests').catch(() => []),
-      githubService.getRepositories().catch(() => []),
-    ]);
+  const fetchPRData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [prsData, reposData] = await Promise.all([
+        apiRequest('/pull-requests').catch(() => []),
+        apiRequest('/github').catch(() => []),
+      ]);
 
-    const rawRepos = Array.isArray(reposData) ? reposData : reposData?.data || [];
-    let rawPRs = Array.isArray(prsData) ? prsData : prsData?.data || [];
-
-    // 2. FALLBACK: If backend /pull-requests returns [], fetch live PRs directly for each repo
-    if (rawPRs.length === 0 && rawRepos.length > 0) {
-      const livePRPromises = rawRepos.map(async (repo) => {
-        try {
-          const owner = repo.owner?.login || repo.full_name?.split('/')[0];
-          const repoName = repo.name;
-          if (!owner || !repoName) return [];
-
-          // Use your exported githubService helper!
-          const livePrs = await githubService.getRepositoryPullRequests(owner, repoName).catch(() => []);
-          const list = Array.isArray(livePrs) ? livePrs : livePrs?.data || [];
-
-          return list.map((pr) => ({
-            id: String(pr.id),
-            number: pr.number,
-            title: pr.title,
-            body: pr.body || '',
-            state: pr.state,
-            merged: Boolean(pr.merged_at),
-            author: pr.user?.login || 'Contributor',
-            headBranch: pr.head?.ref || 'feature',
-            baseBranch: pr.base?.ref || 'main',
-            commentsCount: pr.comments || 0,
-            createdAt: pr.created_at,
-            updatedAt: pr.updated_at,
-            repoName: repoName,
-          }));
-        } catch {
-          return [];
-        }
-      });
-
-      const nestedResults = await Promise.all(livePRPromises);
-      rawPRs = nestedResults.flat();
+      setPullRequests(Array.isArray(prsData) ? prsData : []);
+      setRepos(Array.isArray(reposData) ? reposData : []);
+    } catch (err) {
+      setError(err.message || 'Unable to load pull requests.');
+    } finally {
+      setLoading(false);
     }
-
-    setPullRequests(rawPRs);
-    setRepos(rawRepos);
-  } catch (err) {
-    setError(err.message || 'Unable to load pull requests.');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     fetchPRData();
@@ -100,7 +60,7 @@ const fetchPRData = async () => {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await apiRequest('/github/repos', { method: 'GET' }).catch(() => {});
+      await apiRequest('/projects/repos', { method: 'POST' }).catch(() => {});
       await fetchPRData();
     } catch {
       // Sync error handled quietly

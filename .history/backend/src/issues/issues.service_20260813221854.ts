@@ -37,8 +37,8 @@ export class IssuesService {
       throw new UnauthorizedException('User identification missing from token.');
     }
 
-    // 1. Try reading synced issues from Prisma DB
-    const dbIssues = await this.prisma.issue.findMany({
+    // 1. Try fetching synced issues from database
+    let dbIssues = await this.prisma.issue.findMany({
       where: { project: { userId } },
       include: {
         project: {
@@ -48,61 +48,50 @@ export class IssuesService {
       orderBy: { updatedAt: 'desc' },
     });
 
-    // 2. If DB has synced records, format and return them
-    if (dbIssues.length > 0) {
-      return dbIssues.map((issue) => ({
-        ...issue,
-        repoName: issue.project?.name,
-        repository: {
-          id: issue.project?.id,
-          name: issue.project?.name,
-          owner: issue.project?.owner,
-        },
-      }));
+    // 2. Fallback: If DB is empty, fetch live from GitHub across user projects
+    if (dbIssues.length === 0) {
+      const userProjects = await this.projectsService.getUserProjects(userId);
+
+      const liveIssuesNested = await Promise.all(
+        userProjects.map(async (project) => {
+          try {
+            const issues = await this.githubService.getRepositoryIssues(project.owner, project.name);
+            return (issues || [])
+              .filter((iss: any) => !iss.pull_request)
+              .map((iss: any) => ({
+                id: String(iss.id),
+                githubId: iss.id,
+                number: iss.number,
+                title: iss.title,
+                body: iss.body,
+                state: iss.state,
+                author: iss.user?.login,
+                labels: iss.labels ? iss.labels.map((l: any) => (typeof l === 'string' ? l : l.name)) : [],
+                comments: iss.comments || 0,
+                createdAt: iss.created_at,
+                updatedAt: iss.updated_at,
+                repoName: project.name,
+                repository: { id: project.id, name: project.name, owner: project.owner },
+              }));
+          } catch {
+            return [];
+          }
+        })
+      );
+
+      return liveIssuesNested.flat();
     }
 
-    // 3. FALLBACK: Fetch live issues directly from GitHub for all user projects
-    const userProjects = await this.projectsService.getUserProjects(userId);
-
-    const liveIssuesNested = await Promise.all(
-      userProjects.map(async (project) => {
-        try {
-          const githubIssues = await this.githubService.getRepositoryIssues(
-            project.owner,
-            project.name,
-          );
-
-          return (githubIssues || [])
-            .filter((iss: any) => !iss.pull_request) // Exclude PRs
-            .map((iss: any) => ({
-              id: String(iss.id),
-              githubId: iss.id,
-              number: iss.number,
-              title: iss.title,
-              body: iss.body || null,
-              state: iss.state,
-              author: iss.user?.login || null,
-              labels: iss.labels
-                ? iss.labels.map((l: any) => (typeof l === 'string' ? l : l.name))
-                : [],
-              comments: iss.comments || 0,
-              createdAt: iss.created_at,
-              updatedAt: iss.updated_at,
-              repoName: project.name,
-              repository: {
-                id: project.id,
-                name: project.name,
-                owner: project.owner,
-              },
-            }));
-        } catch (err: any) {
-          this.logger.warn(`Failed to fetch live issues for ${project.name}: ${err.message}`);
-          return [];
-        }
-      }),
-    );
-
-    return liveIssuesNested.flat();
+    // Map DB issues
+    return dbIssues.map((issue) => ({
+      ...issue,
+      repoName: issue.project?.name,
+      repository: {
+        id: issue.project?.id,
+        name: issue.project?.name,
+        owner: issue.project?.owner,
+      },
+    }));
   }
 
   /**

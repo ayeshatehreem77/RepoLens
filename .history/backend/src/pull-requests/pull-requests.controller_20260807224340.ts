@@ -13,7 +13,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @Controller('pull-requests')
 @UseGuards(JwtAuthGuard)
 export class PullRequestsController {
-  constructor(private readonly pullRequestsService: PullRequestsService) { }
+  constructor(private readonly pullRequestsService: PullRequestsService) {}
 
   private extractUserId(req: any): string {
     const userId = req.user?.sub || req.user?.userId || req.user?.id;
@@ -21,12 +21,6 @@ export class PullRequestsController {
       throw new UnauthorizedException('User ID could not be identified from token.');
     }
     return userId;
-  }
-
-  @Get()
-  async getAllPullRequests(@Req() req: any) {
-    const userId = this.extractUserId(req);
-    return this.pullRequestsService.getAllPullRequestsForUser(userId);
   }
 
   @Get('project/:projectId')
