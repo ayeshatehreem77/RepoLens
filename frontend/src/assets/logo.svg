@@ -1,0 +1,16 @@
+<svg viewBox="0 0 380 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="lensGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+  </defs>
+  
+  <g transform="translate(-15, -12) scale(0.64)">
+    <rect x="60" y="46" width="24" height="112" rx="12" fill="url(#lensGrad)"/>
+    <circle cx="114" cy="92" r="36" fill="none" stroke="url(#lensGrad)" stroke-width="24"/>
+    <path d="M 96 118 L 158 156" stroke="url(#lensGrad)" stroke-width="24" stroke-linecap="round" fill="none"/>
+    <circle cx="114" cy="92" r="11" fill="#FFFFFF"/>
+  </g>
+  <text x="110" y="76" font-family="Poppins" font-weight="700" font-size="56" fill="#FFFFFF">Repo<tspan fill="url(#lensGrad)">Lens</tspan></text>
+</svg>

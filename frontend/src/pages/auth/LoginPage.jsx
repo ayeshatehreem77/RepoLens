@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, ArrowRight, Lock, Mail, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import logoSvg from '../../assets/logo.svg'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -46,13 +47,30 @@ export default function LoginPage() {
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className="w-full max-w-md bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl relative z-10"
       >
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-block text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-purple-400 bg-clip-text text-transparent">
-            RepoLens
-          </Link>
-          <h1 className="text-xl font-semibold text-white mt-4">Welcome back</h1>
-          <p className="text-sm text-slate-400 mt-1">Sign in to your account to continue</p>
+        <div className="flex flex-col items-center justify-center text-center w-full mb-8">
+          {/* Logo Container */}
+          <div className="flex justify-center w-full mb-6">
+            <Link to="/" className="flex items-center justify-center overflow-hidden h-12 md:h-14 group">
+              <img
+                src={logoSvg}
+                alt="RepoLens Logo"
+                className="h-full w-auto object-cover object-left transition-transform duration-200 group-hover:scale-105"
+              />
+            </Link>
+          </div>
+
+          {/* Typography Wrapper */}
+          <div className="flex flex-col gap-1.5 w-full">
+            <h1 className="text-2xl font-bold tracking-tight text-white">
+              Welcome back
+            </h1>
+            <p className="text-sm text-slate-400 font-medium max-w-sm mx-auto">
+              Sign in to your account to continue
+            </p>
+          </div>
         </div>
+
+
 
         {error && (
           <motion.div

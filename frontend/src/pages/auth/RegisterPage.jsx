@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, ArrowRight, Lock, Mail, User, CheckCircle2, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import logoSvg from '../../assets/logo.svg'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -69,8 +70,12 @@ export default function RegisterPage() {
         className="w-full max-w-md bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl relative z-10"
       >
         <div className="text-center mb-8">
-          <Link to="/" className="inline-block text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-purple-400 bg-clip-text text-transparent">
-            RepoLens
+          <Link to="/" className="flex items-center justify-center overflow-hidden h-12 md:h-14 group">
+            <img
+              src={logoSvg}
+              alt="RepoLens Logo"
+              className="h-full w-auto object-cover object-left transition-transform duration-200 group-hover:scale-105"
+            />
           </Link>
           <h1 className="text-xl font-semibold text-white mt-4">Create your account</h1>
           <p className="text-sm text-slate-400 mt-1">Start optimizing your code workflow today</p>

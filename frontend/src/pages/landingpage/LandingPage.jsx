@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { MouseGlowCursor, SpotlightCard, TiltPreview } from '../../layouts/MouseGlowCursor';
+import logoSvg from '../../assets/logo.svg';
 
 const GithubIcon = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -29,7 +30,7 @@ const GithubIcon = ({ className = "w-4 h-4" }) => (
 );
 
 export default function LandingPage() {
-    
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -70,20 +71,18 @@ export default function LandingPage() {
 
       {/* 1. NAVBAR */}
       <header
-        className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
-          isScrolled
-            ? 'bg-dark-bg/80 backdrop-blur-xl border-b border-dark-border/80 py-3 shadow-2xl'
-            : 'bg-transparent py-5'
-        }`}
+        className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${isScrolled
+          ? 'bg-dark-bg/80 backdrop-blur-xl border-b border-dark-border/80 py-3 shadow-2xl'
+          : 'bg-transparent py-5'
+          }`}
       >
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-accent-cyan to-accent-violet flex items-center justify-center font-mono font-bold text-dark-bg shadow-glow-cyan transition-transform group-hover:scale-105">
-              RL
-            </div>
-            <span className="font-mono font-bold text-xl tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
-              RepoLens
-            </span>
+          <Link to="/" className="flex items-center gap-2 group">
+            <img
+              src={logoSvg}
+              alt="RepoLens Logo"
+              className="h-9 md:h-11 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+            />
           </Link>
 
           {/* Desktop Nav Links */}
@@ -189,10 +188,10 @@ export default function LandingPage() {
 
       {/* 2. HERO SECTION */}
       <motion.section
-  initial={{ opacity: 0, y: 24 }}
-  whileInView={{ opacity: 1, y: 0 }}
-  viewport={{ once: true, margin: "-100px" }}
-  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="relative pt-36 pb-20 md:pt-48 md:pb-32 px-6 max-w-7xl mx-auto z-10">
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="relative pt-36 pb-20 md:pt-48 md:pb-32 px-6 max-w-7xl mx-auto z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           {/* Left Column Text */}
           <motion.div
@@ -331,10 +330,10 @@ export default function LandingPage() {
 
       {/* 3. TRUST / VALUE STRIP */}
       <motion.section
-  initial={{ opacity: 0, y: 24 }}
-  whileInView={{ opacity: 1, y: 0 }}
-  viewport={{ once: true, margin: "-100px" }}
-  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="border-y border-dark-border bg-dark-surface/30 backdrop-blur-sm py-8 relative z-10">
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="border-y border-dark-border bg-dark-surface/30 backdrop-blur-sm py-8 relative z-10">
         <div className="max-w-7xl mx-auto px-6">
           <p className="text-center text-xs font-mono text-slate-400 uppercase tracking-widest mb-6">
             Unified Repository Workspace Capability
@@ -364,10 +363,10 @@ export default function LandingPage() {
 
       {/* 4. FEATURES SECTION */}
       <motion.section
-  initial={{ opacity: 0, y: 24 }}
-  whileInView={{ opacity: 1, y: 0 }}
-  viewport={{ once: true, margin: "-100px" }}
-  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} id="features" className="py-24 px-6 max-w-7xl mx-auto relative z-10">
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} id="features" className="py-24 px-6 max-w-7xl mx-auto relative z-10">
         <div className="text-center space-y-4 max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl sm:text-4xl font-bold font-sans">
             Everything you need to understand your repositories.
@@ -464,10 +463,10 @@ export default function LandingPage() {
 
       {/* 5. HOW IT WORKS */}
       <motion.section
-  initial={{ opacity: 0, y: 24 }}
-  whileInView={{ opacity: 1, y: 0 }}
-  viewport={{ once: true, margin: "-100px" }}
-  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} id="how-it-works" className="py-20 border-t border-dark-border/60 bg-dark-surface/20 relative z-10">
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} id="how-it-works" className="py-20 border-t border-dark-border/60 bg-dark-surface/20 relative z-10">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center space-y-3 max-w-2xl mx-auto mb-16">
             <p className="text-xs font-mono text-accent-cyan uppercase tracking-widest">Simple Workflow</p>
@@ -518,10 +517,10 @@ export default function LandingPage() {
 
       {/* 6. PRODUCT PREVIEW */}
       <motion.section
-  initial={{ opacity: 0, y: 24 }}
-  whileInView={{ opacity: 1, y: 0 }}
-  viewport={{ once: true, margin: "-100px" }}
-  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} id="product-preview" className="py-24 px-6 max-w-7xl mx-auto relative z-10">
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} id="product-preview" className="py-24 px-6 max-w-7xl mx-auto relative z-10">
         <div className="text-center space-y-4 max-w-2xl mx-auto mb-12">
           <h2 className="text-3xl font-bold font-sans">Designed for modern dev teams</h2>
           <p className="text-slate-400 text-sm">Experience the high-contrast, dark tech dashboard interface.</p>
@@ -557,11 +556,10 @@ export default function LandingPage() {
               {['Dashboard', 'Projects', 'Issues', 'Pull Requests', 'Activity', 'Settings'].map((item, idx) => (
                 <div
                   key={idx}
-                  className={`px-3 py-2 rounded-lg text-xs font-mono flex items-center justify-between ${
-                    idx === 0
-                      ? 'bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20'
-                      : 'text-slate-400'
-                  }`}
+                  className={`px-3 py-2 rounded-lg text-xs font-mono flex items-center justify-between ${idx === 0
+                    ? 'bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20'
+                    : 'text-slate-400'
+                    }`}
                 >
                   <span>{item}</span>
                   {idx === 0 && <ChevronRight className="w-3 h-3" />}
@@ -607,10 +605,10 @@ export default function LandingPage() {
 
       {/* 7. WHY REPO LENS */}
       <motion.section
-  initial={{ opacity: 0, y: 24 }}
-  whileInView={{ opacity: 1, y: 0 }}
-  viewport={{ once: true, margin: "-100px" }}
-  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} id="why-repolens" className="py-20 border-t border-dark-border/60 bg-dark-surface/30 relative z-10">
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} id="why-repolens" className="py-20 border-t border-dark-border/60 bg-dark-surface/30 relative z-10">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-6 space-y-6">
@@ -649,10 +647,10 @@ export default function LandingPage() {
 
       {/* 8. AI / FUTURE SECTION */}
       <motion.section
-  initial={{ opacity: 0, y: 24 }}
-  whileInView={{ opacity: 1, y: 0 }}
-  viewport={{ once: true, margin: "-100px" }}
-  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} id="ai-insights" className="py-24 px-6 max-w-7xl mx-auto relative z-10">
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} id="ai-insights" className="py-24 px-6 max-w-7xl mx-auto relative z-10">
         <div className="p-8 sm:p-12 rounded-2xl border border-accent-violet/40 bg-gradient-to-b from-dark-surface via-dark-surface/90 to-dark-bg relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-accent-violet/10 blur-[120px] rounded-full pointer-events-none" />
 
@@ -693,10 +691,10 @@ export default function LandingPage() {
 
       {/* 9. FINAL CTA */}
       <motion.section
-  initial={{ opacity: 0, y: 24 }}
-  whileInView={{ opacity: 1, y: 0 }}
-  viewport={{ once: true, margin: "-100px" }}
-  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="py-20 border-t border-dark-border text-center relative z-10 px-6">
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} className="py-20 border-t border-dark-border text-center relative z-10 px-6">
         <div className="max-w-3xl mx-auto space-y-6">
           <h2 className="text-3xl sm:text-4xl font-bold font-sans">See your repositories differently.</h2>
           <p className="text-slate-400 text-sm sm:text-base">

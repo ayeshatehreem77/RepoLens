@@ -19,6 +19,7 @@ import {
   Code2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import logoSvg from '../assets/logo.svg'
 
 export default function AppLayout({ children, onSync, isSyncing }) {
   const { user, logout } = useAuth();
@@ -63,11 +64,12 @@ export default function AppLayout({ children, onSync, isSyncing }) {
       <aside className="hidden lg:flex w-64 border-r border-white/10 bg-slate-900/40 backdrop-blur-xl flex-col fixed inset-y-0 left-0 z-30">
         {/* Brand Logo */}
         <div className="h-16 px-6 flex items-center gap-3 border-b border-white/5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-purple-500/20 text-sm">
-            RL
-          </div>
-          <Link to="/dashboard" className="font-semibold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-purple-400 bg-clip-text text-transparent">
-            RepoLens
+          <Link to="/" className="flex items-center justify-center overflow-hidden h-12 md:h-14 group">
+            <img
+              src={logoSvg}
+              alt="RepoLens Logo"
+              className="h-full w-auto object-cover object-left transition-transform duration-200 group-hover:scale-105"
+            />
           </Link>
         </div>
 
@@ -83,11 +85,10 @@ export default function AppLayout({ children, onSync, isSyncing }) {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all group ${
-                  isActive
-                    ? 'text-white bg-white/10 border border-white/10 shadow-inner'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-                }`}
+                className={`relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all group ${isActive
+                  ? 'text-white bg-white/10 border border-white/10 shadow-inner'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                  }`}
               >
                 <Icon className={`w-4 h-4 ${isActive ? 'text-purple-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
                 <span>{item.name}</span>
@@ -107,7 +108,7 @@ export default function AppLayout({ children, onSync, isSyncing }) {
             <div className="text-[10px] font-semibold text-slate-500 tracking-wider uppercase px-3 mb-2">
               Intelligence
             </div>
-            
+
             <div className="px-3 py-2.5 rounded-xl border border-purple-500/20 bg-purple-950/20 text-xs text-purple-300 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
@@ -163,12 +164,13 @@ export default function AppLayout({ children, onSync, isSyncing }) {
             >
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-purple-600 flex items-center justify-center text-xs font-bold text-white">
-                      RL
-                    </div>
-                    <span className="font-semibold text-white">RepoLens</span>
-                  </div>
+                  <Link to="/" className="flex items-center justify-center overflow-hidden h-10 md:h-14 group">
+                    <img
+                      src={logoSvg}
+                      alt="RepoLens Logo"
+                      className="h-full w-auto object-cover object-left transition-transform duration-200 group-hover:scale-105"
+                    />
+                  </Link>
                   <button onClick={() => setMobileMenuOpen(false)} className="p-1 text-slate-400 hover:text-white">
                     <X className="w-5 h-5" />
                   </button>
@@ -181,11 +183,10 @@ export default function AppLayout({ children, onSync, isSyncing }) {
                         key={item.path}
                         to={item.path}
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium ${
-                          location.pathname === item.path
-                            ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium ${location.pathname === item.path
+                          ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30'
+                          : 'text-slate-400 hover:text-slate-200'
+                          }`}
                       >
                         <Icon className="w-4 h-4" />
                         <span>{item.name}</span>
