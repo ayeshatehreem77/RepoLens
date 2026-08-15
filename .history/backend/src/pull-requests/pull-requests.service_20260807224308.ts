@@ -17,8 +17,11 @@ export class PullRequestsService {
     private readonly prisma: PrismaService,
     private readonly githubService: GithubService,
     private readonly projectsService: ProjectsService,
-  ) { }
+  ) {}
 
+  /**
+   * Helper to ensure the project exists and belongs to the authenticated user.
+   */
   private async validateProjectOwnership(userId: string, projectId: string) {
     if (!userId) {
       throw new UnauthorizedException('User identification missing from token.');
@@ -26,72 +29,9 @@ export class PullRequestsService {
     return this.projectsService.getProjectById(userId, projectId);
   }
 
-  async getAllPullRequestsForUser(userId: string) {
-    if (!userId) {
-      throw new UnauthorizedException('User identification missing from token.');
-    }
-
-    // 1. Try fetching synced PRs from database
-    const dbPrs = await this.prisma.pullRequest.findMany({
-      where: { project: { userId } },
-      include: {
-        project: {
-          select: { id: true, name: true, owner: true },
-        },
-      },
-      orderBy: { updatedAt: 'desc' },
-    });
-
-    if (dbPrs.length > 0) {
-      return dbPrs.map((pr) => ({
-        ...pr,
-        repoName: pr.project?.name,
-        repository: pr.project,
-      }));
-    }
-
-    // 2. FALLBACK: Fetch live PRs across all user projects
-    const userProjects = await this.projectsService.getUserProjects(userId);
-
-    const livePrsNested = await Promise.all(
-      userProjects.map(async (project) => {
-        try {
-          const githubPrs = await this.githubService.getRepositoryPullRequests(
-            project.owner,
-            project.name,
-          );
-
-          return (githubPrs || []).map((pr: any) => ({
-            id: String(pr.id),
-            githubId: pr.id,
-            number: pr.number,
-            title: pr.title,
-            body: pr.body || null,
-            state: pr.state,
-            merged: Boolean(pr.merged_at),
-            author: pr.user?.login || null,
-            headBranch: pr.head?.ref || null,
-            baseBranch: pr.base?.ref || null,
-            commentsCount: pr.comments || 0,
-            createdAt: pr.created_at,
-            updatedAt: pr.updated_at,
-            repoName: project.name,
-            repository: {
-              id: project.id,
-              name: project.name,
-              owner: project.owner,
-            },
-          }));
-        } catch (err: any) {
-          this.logger.warn(`Failed to fetch PRs for ${project.name}: ${err.message}`);
-          return [];
-        }
-      }),
-    );
-
-    return livePrsNested.flat();
-  }
-
+  /**
+   * Fetch PRs directly from GitHub for a project.
+   */
   async getGithubPullRequestsForProject(userId: string, projectId: string) {
     const project = await this.validateProjectOwnership(userId, projectId);
 
