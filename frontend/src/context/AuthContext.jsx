@@ -55,8 +55,30 @@ export function AuthProvider({ children }) {
       setUser(data.user);
       localStorage.setItem('repolens_user', JSON.stringify(data.user));
 
-      githubService.getAuthenticatedUser().then(setGithubUser).catch(() => {});
+      githubService.getAuthenticatedUser().then(setGithubUser).catch(() => { });
     }
+    return data;
+  };
+
+  const register = async (name, email, password) => {
+    const data = await apiRequest('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+      }),
+    });
+
+    if (data.token || data.accessToken) {
+      const token = data.token || data.accessToken;
+
+      localStorage.setItem('repolens_token', token);
+
+      setUser(data.user);
+      localStorage.setItem('repolens_user', JSON.stringify(data.user));
+    }
+
     return data;
   };
 
@@ -69,7 +91,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, githubUser, loading, login, logout, setGithubUser }}>
+    <AuthContext.Provider value={{ user, githubUser, loading, login, register, logout, setGithubUser }}>
       {children}
     </AuthContext.Provider>
   );
